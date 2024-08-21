@@ -7,13 +7,14 @@ from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 import os
-from dotenv import load_dotenv
 
+# Access the API key in codespaced
+#from dotenv import load_dotenv
 # Load environment variables from .env file
-load_dotenv()
+#load_dotenv()
+#api_key = os.getenv("OPENAI_API_KEY")
 
-# Access the API key
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = st.secrets["OPENAI_API_KEY"]
 
 st.set_page_config(page_title="PDF Q&A System", layout="wide")
 
