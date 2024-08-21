@@ -9,6 +9,8 @@ from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory  # Import memory
 from langchain.chains import ConversationalRetrievalChain
 
+api_key = st.secrets["OPENAI_API_KEY"]
+
 st.set_page_config(page_title="PDF Q&A System", layout="wide")
 
 st.markdown("""
@@ -39,7 +41,7 @@ def get_text_chunks(text):
     return chunks
 
 def get_vector_store(text_chunks):
-    embeddings = OpenAIEmbeddings(openai_api_key="sk-proj-u6xUosNkRjbdg2jBumR9T3BlbkFJbkuSvntQFDtEb9qGeQxX",
+    embeddings = OpenAIEmbeddings(openai_api_key=api_key,
                                   model="text-embedding-3-small")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
@@ -56,7 +58,7 @@ def get_conversational_chain(vectorstore,memory):
 
     Answer:
     """
-    model = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key="sk-proj-u6xUosNkRjbdg2jBumR9T3BlbkFJbkuSvntQFDtEb9qGeQxX",
+    model = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key,
                        temperature=0)
 
     # ConversationalRetrievalChain setup with memory
@@ -88,7 +90,7 @@ def main():
 
     if user_question:
         # Load the vectorstore and initiate conversation
-        embeddings = OpenAIEmbeddings(openai_api_key="sk-proj-u6xUosNkRjbdg2jBumR9T3BlbkFJbkuSvntQFDtEb9qGeQxX")
+        embeddings = OpenAIEmbeddings(openai_api_key=api_key)
         vectorstore = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
 
         chain = get_conversational_chain(vectorstore, memory)
