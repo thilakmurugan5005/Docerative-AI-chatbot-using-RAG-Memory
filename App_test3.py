@@ -107,7 +107,7 @@ def main():
             st.chat_message("assistant").write(message["content"])
 
     # Capture user input
-    user_input = st.text_input("Ask a Question from the PDF Files", key="user_question_input")
+    user_input = st.text_input("Ask a Question from the PDF Files", key="user_question_input", value="")
 
     # Process user input when it is submitted
     if user_input and st.session_state.vectorstore:
@@ -117,26 +117,13 @@ def main():
         # Generate the bot's response
         response = chain({"question": user_input})
         bot_response = response["answer"]
-        print(response)
-
+        
         if bot_response:  # Check if there's a valid response
-            print("Entered if bot_responce")
             st.session_state.messages.append({"role": "user", "content": user_input})
             st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
-            # Loop through messages and display them
-            for message in st.session_state.messages:
-                print("Entered for loop : Message ->",message)
-
-                #st.chat_message("user")
-                #st.write("Question: ", message[content][bot_response][question])
-
-                #st.chat_message("assistant")
-                #st.write("Answer: ", message["content"]["bot_response"]["answer"])
-            
-
-        # Use set_query_params to reset the input field
-        #st.set_query_params()
+        # Rerun the app with a clean input field
+        st.query_params.clear()
 
 if __name__ == "__main__":
     main()
