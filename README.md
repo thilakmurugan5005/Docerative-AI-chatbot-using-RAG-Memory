@@ -8,7 +8,8 @@ Docerative AI is a powerful Streamlit application designed to extract and analyz
 - **Retrieval-Augmented Generation**: Utilizes OpenAI's Generative AI model GPT-3.5-Turbo for high-quality, contextually relevant answers.
 
 
-###How It Works
+### How It Works
+
 Follow these simple steps to interact with the chatbot:
 
 Upload Your Documents: The system accepts multiple PDF files at once, analyzing the content to provide comprehensive insights.
