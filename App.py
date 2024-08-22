@@ -8,12 +8,6 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 import os
 
-# Access the API key in codespaced
-#from dotenv import load_dotenv
-# Load environment variables from .env file
-#load_dotenv()
-#api_key = os.getenv("OPENAI_API_KEY")
-
 api_key = st.secrets["OPENAI_API_KEY"]
 
 st.set_page_config(page_title="Docerative AI", layout="wide")
@@ -51,7 +45,7 @@ def get_conversational_chain(vectorstore, memory):
     return qa_chain
 
 def main():
-    st.header("AI clone chatbot💁")
+    st.header("Docerative-AI Chatbot")
 
     # Initialize memory and vectorstore in session state
     if "memory" not in st.session_state:
