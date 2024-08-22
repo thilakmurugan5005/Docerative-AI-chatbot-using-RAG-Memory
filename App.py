@@ -16,7 +16,7 @@ import os
 
 api_key = st.secrets["OPENAI_API_KEY"]
 
-st.set_page_config(page_title="PDF Q&A System", layout="wide")
+st.set_page_config(page_title="Docerative AI", layout="wide")
 
 # Function to extract text from uploaded PDF files
 def get_pdf_text(pdf_docs):
