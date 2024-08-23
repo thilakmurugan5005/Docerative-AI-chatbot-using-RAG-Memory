@@ -10,7 +10,7 @@ import os
 
 api_key = st.secrets["OPENAI_API_KEY"]
 
-st.set_page_config(page_title="Docerative AI", layout="wide")
+st.set_page_config(page_title="Docurative AI", layout="wide")
 
 # Function to extract text from uploaded PDF files
 def get_pdf_text(pdf_docs):
@@ -45,7 +45,7 @@ def get_conversational_chain(vectorstore, memory):
     return qa_chain
 
 def main():
-    st.header("Docerative-AI Chatbot")
+    st.header("Docurative-AI Chatbot")
 
     # Initialize memory and vectorstore in session state
     if "memory" not in st.session_state:
