@@ -7,8 +7,15 @@ from langchain_openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 import os
+from uuid import uuid4
 
 api_key = st.secrets["OPENAI_API_KEY"]
+
+unique_id = uuid4().hex[0:8]
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = f"Testinggg - {unique_id}"
+os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGCHAIN_API_KEY"] = "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"
 
 st.set_page_config(page_title="Docurative AI", layout="wide")
 
