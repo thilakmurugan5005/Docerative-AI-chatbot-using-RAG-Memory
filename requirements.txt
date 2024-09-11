@@ -1,6 +1,6 @@
 PyPDF2
 langchain
-llamaindex
+llama-index
 llama.index
 faiss-cpu
 streamlit
