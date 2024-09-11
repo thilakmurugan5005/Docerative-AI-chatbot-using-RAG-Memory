@@ -13,9 +13,7 @@ from llama_index.core import StorageContext
 
 from llama_index.core.memory import ChatMemoryBuffer
 
-# Load environment variables from .env file
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = st.secrets["OPENAI_API_KEY"]
 
 
 
