@@ -1,62 +1,99 @@
 import streamlit as st
 from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
 import os
-from uuid import uuid4
+from dotenv import load_dotenv
+from llama_index.core import Document
+from llama_index.core import get_response_synthesizer
+from llama_index.core import DocumentSummaryIndex
+from llama_index.llms.openai.base import OpenAI
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core import load_index_from_storage
+from llama_index.core import StorageContext
 
-api_key = st.secrets["OPENAI_API_KEY"]
+from llama_index.core.memory import ChatMemoryBuffer
 
-unique_id = uuid4().hex[0:8]
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_PROJECT"] = f"Testinggg - {unique_id}"
-os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ["LANGCHAIN_API_KEY"] = "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"
+# Load environment variables from .env file
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+
+
+
 
 st.set_page_config(page_title="Docurative AI", layout="wide")
 
+def get_doc_title(pdf_docs):
+    doc_title = []
+    for title in pdf_docs:
+        doc_title.append(title.name)
+    #print(doc_title)
+    return doc_title
+
+
+
 # Function to extract text from uploaded PDF files
 def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf in pdf_docs:
+    doc = []
+    doc_title = get_doc_title(pdf_docs)
+    for i,pdf in enumerate(pdf_docs):
+        pdf_text = ""
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
-            text += page.extract_text() or ""  # Handle cases where extract_text returns None
-    return text
+            pdf_text += page.extract_text() or ""  # Handle cases where extract_text returns None
+
+        doc.append(Document(doc_id=doc_title[i],text=pdf_text))
+
+    return doc
+
 
 # Function to chunk the extracted text
-def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=8000, chunk_overlap=1000)
-    chunks = text_splitter.split_text(text)
-    return chunks
-
-# Function to create vector store from text chunks
-def get_vector_store(text_chunks):
-    embeddings = OpenAIEmbeddings(openai_api_key=api_key, model="text-embedding-3-small")
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("faiss_index")
-    return vector_store
-
-# Function to create the conversational chain with memory
-def get_conversational_chain(vectorstore, memory):
-    model = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key, temperature=0)
-    qa_chain = ConversationalRetrievalChain.from_llm(
-        llm=model,
-        retriever=vectorstore.as_retriever(),
-        memory=memory
+def summary_embeddings(all_docs):
+    chatgpt = OpenAI(temperature=0, model="gpt-3.5-turbo")
+    splitter = SentenceSplitter(chunk_size=1024)
+    
+    response_synthesizer = get_response_synthesizer(
+    response_mode="tree_summarize", use_async=True
     )
-    return qa_chain
+    doc_summary_index = DocumentSummaryIndex.from_documents(
+    all_docs,
+    llm=chatgpt,
+    transformations=[splitter],
+    response_synthesizer=response_synthesizer,
+    show_progress=False,
+    )
+
+    doc_summary_index.storage_context.persist("testing_pdf")
+
+    return
+
+
+def get_conversational_chain (doc_summary_index,memory,user_input):
+    llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key, temperature=1)
+    chat_engine = doc_summary_index.as_chat_engine(
+    chat_mode="condense_plus_context",
+    memory=memory,
+    llm=llm,
+    context_prompt=(
+        "You are a chatbot, able to have normal interactions, respond to the user question based on the context."
+        "Here are the relevant documents for the context:\n"
+        "{context_str}"
+        "\nInstruction: Use the previous chat history, or the context above, to interact and help the user."
+        "If you are not able to answer based on the context please say Please ask question related to the PDF" 
+        ),
+    verbose=False,
+    )
+
+    response_instance = chat_engine.chat(user_input)
+
+    return response_instance
+
 
 def main():
     st.header("Docurative-AI Chatbot")
 
     # Initialize memory and vectorstore in session state
     if "memory" not in st.session_state:
-        st.session_state.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        st.session_state.memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
     
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = None
@@ -73,7 +110,7 @@ def main():
         st.markdown("""
         ## PDF Q&A System: Get instant insights from your Documents
 
-        This chatbot is built using the Retrieval-Augmented Generation (RAG) framework, leveraging Generative AI model GPT 3.5 turbo. It processes uploaded PDF documents by breaking them down into manageable chunks, creates a searchable vector store, and generates accurate answers to user queries. This advanced approach ensures high-quality, contextually relevant responses for an efficient and effective user experience.
+        This chatbot is built using the Advanced Retrieval-Augmented Generation (RAG) framework, leveraging Generative AI model GPT 3.5 turbo.
 
         ### How It Works
 
@@ -92,9 +129,15 @@ def main():
         if st.button("Submit & Process", key="process_button"):
             if pdf_docs:
                 with st.spinner("Processing..."):
-                    raw_text = get_pdf_text(pdf_docs)
-                    text_chunks = get_text_chunks(raw_text)
-                    st.session_state.vectorstore = get_vector_store(text_chunks)
+                    all_docs = get_pdf_text(pdf_docs)
+                    #print(all_docs)
+                    summary_embeddings(all_docs)
+                    # rebuild storage context
+                    
+                    storage_context = StorageContext.from_defaults(persist_dir="testing_pdf")
+                    # Use the StorageContext to load the index
+                    index = load_index_from_storage(storage_context)
+                    st.session_state.vectorstore = index
                     st.success("Done")
                     # Once processing is done, hide the intro
                     st.session_state.intro_shown = True
@@ -113,11 +156,10 @@ def main():
     # Process user input when it is submitted
     if user_input and st.session_state.vectorstore:
         # Get the conversational chain
-        chain = get_conversational_chain(st.session_state.vectorstore, st.session_state.memory)
-        
-        # Generate the bot's response
-        response = chain({"question": user_input})
-        bot_response = response["answer"]
+        response = get_conversational_chain(st.session_state.vectorstore,st.session_state.memory,user_input)
+    
+        bot_response = response.response
+        print("Bot :",bot_response)
         
         if bot_response:  # Check if there's a valid response
             st.session_state.messages.append({"role": "user", "content": user_input})
