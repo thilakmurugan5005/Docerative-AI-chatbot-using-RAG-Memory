@@ -1,6 +1,6 @@
 PyPDF2
 langchain
-langchain-openai
-langchain-community
+llamaindex
+llama.index
 faiss-cpu
 streamlit
