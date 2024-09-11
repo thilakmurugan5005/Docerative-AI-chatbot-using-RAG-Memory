@@ -2,7 +2,6 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from langchain_openai import ChatOpenAI
 import os
-from dotenv import load_dotenv
 from llama_index.core import Document
 from llama_index.core import get_response_synthesizer
 from llama_index.core import DocumentSummaryIndex
