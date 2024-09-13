@@ -5,3 +5,4 @@ llama.index
 faiss-cpu
 streamlit
 llama-index-llms-langchain
+langchain_community
