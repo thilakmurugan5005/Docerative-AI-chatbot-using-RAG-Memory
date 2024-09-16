@@ -6,3 +6,4 @@ faiss-cpu
 streamlit
 llama-index-llms-langchain
 langchain_community
+langchain_openai
