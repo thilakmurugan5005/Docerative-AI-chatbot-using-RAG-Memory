@@ -1,99 +1,55 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain_openai import ChatOpenAI
-import os
 from llama_index.core import Document
-from llama_index.core import get_response_synthesizer
-from llama_index.core import DocumentSummaryIndex
 from llama_index.llms.openai.base import OpenAI
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core import load_index_from_storage
-from llama_index.core import StorageContext
-
 from llama_index.core.memory import ChatMemoryBuffer
 
 api_key = st.secrets["OPENAI_API_KEY"]
 
-
-
-
 st.set_page_config(page_title="Docurative AI", layout="wide")
-
-def get_doc_title(pdf_docs):
-    doc_title = []
-    for title in pdf_docs:
-        doc_title.append(title.name)
-    #print(doc_title)
-    return doc_title
-
-
 
 # Function to extract text from uploaded PDF files
 def get_pdf_text(pdf_docs):
-    doc = []
-    doc_title = get_doc_title(pdf_docs)
-    for i,pdf in enumerate(pdf_docs):
-        pdf_text = ""
+    pdf_text = ""
+    for pdf in pdf_docs:
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             pdf_text += page.extract_text() or ""  # Handle cases where extract_text returns None
+    return pdf_text
 
-        doc.append(Document(doc_id=doc_title[i],text=pdf_text))
+# Function to summarize text using OpenAI LLM
+def generate_summary(text):
+    llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key, temperature=0)
+    prompt = f"Summarize the following text in detail:\n\n{text}"
+    response = llm(prompt)
+    return response
 
-    return doc
-
-
-# Function to chunk the extracted text
-def summary_embeddings(all_docs):
-    chatgpt = OpenAI(temperature=0, model="gpt-3.5-turbo")
-    splitter = SentenceSplitter(chunk_size=1024)
-    
-    response_synthesizer = get_response_synthesizer(
-    response_mode="tree_summarize", use_async=True
-    )
-    doc_summary_index = DocumentSummaryIndex.from_documents(
-    all_docs,
-    llm=chatgpt,
-    transformations=[splitter],
-    response_synthesizer=response_synthesizer,
-    show_progress=False,
-    )
-
-    doc_summary_index.storage_context.persist("testing_pdf")
-
-    return
-
-
-def get_conversational_chain (doc_summary_index,memory,user_input):
+# Function to handle chatbot conversation
+def get_conversational_chain(doc_summary_index, memory, user_input):
     llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key, temperature=1)
     chat_engine = doc_summary_index.as_chat_engine(
-    chat_mode="condense_plus_context",
-    memory=memory,
-    llm=llm,
-    context_prompt=(
-        "You are a chatbot, able to have normal interactions, respond to the user question based on the context."
-        "Here are the relevant documents for the context:\n"
-        "{context_str}"
-        "\nInstruction: Use the previous chat history, or the context above, to interact and help the user."
-        "If you are not able to answer based on the context please say Please ask question related to the PDF" 
+        chat_mode="condense_plus_context",
+        memory=memory,
+        llm=llm,
+        context_prompt=(
+            "You are a chatbot, able to have normal interactions, respond to the user question based on the context."
+            "Here are the relevant documents for the context:\n"
+            "{context_str}"
+            "\nInstruction: Use the previous chat history, or the context above, to interact and help the user."
+            "If you are not able to answer based on the context please say Please ask a question related to the PDF."
         ),
-    verbose=False,
+        verbose=False,
     )
-
     response_instance = chat_engine.chat(user_input)
-
     return response_instance
-
 
 def main():
     st.header("Docurative-AI Chatbot")
 
-    # Initialize memory and vectorstore in session state
+    # Initialize memory in session state
     if "memory" not in st.session_state:
         st.session_state.memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
-    
-    if "vectorstore" not in st.session_state:
-        st.session_state.vectorstore = None
 
     # Initialize chat messages in session state
     if "messages" not in st.session_state:
@@ -126,18 +82,18 @@ def main():
         if st.button("Submit & Process", key="process_button"):
             if pdf_docs:
                 with st.spinner("Processing..."):
-                    all_docs = get_pdf_text(pdf_docs)
-                    #print(all_docs)
-                    summary_embeddings(all_docs)
-                    # rebuild storage context
-                    
-                    storage_context = StorageContext.from_defaults(persist_dir="testing_pdf")
-                    # Use the StorageContext to load the index
-                    index = load_index_from_storage(storage_context)
-                    st.session_state.vectorstore = index
-                    st.success("Done")
+                    # Extract text from PDF
+                    pdf_text = get_pdf_text(pdf_docs)
+
+                    # Generate summary using the LLM
+                    summary = generate_summary(pdf_text)
+
+                    # Append the summary as the first assistant response
+                    st.session_state.messages.append({"role": "assistant", "content": summary})
+
                     # Once processing is done, hide the intro
                     st.session_state.intro_shown = True
+                    st.success("Documents processed. Summary generated.")
             else:
                 st.error("Please upload at least one PDF file.")
 
@@ -150,14 +106,14 @@ def main():
 
     # Capture user input
     user_input = st.chat_input("Ask a Question from the PDF Files", key="user_question_input")
+
     # Process user input when it is submitted
-    if user_input and st.session_state.vectorstore:
+    if user_input and "vectorstore" in st.session_state:
         # Get the conversational chain
-        response = get_conversational_chain(st.session_state.vectorstore,st.session_state.memory,user_input)
-    
+        response = get_conversational_chain(st.session_state.vectorstore, st.session_state.memory, user_input)
+
         bot_response = response.response
-        print("Bot :",bot_response)
-        
+
         if bot_response:  # Check if there's a valid response
             st.session_state.messages.append({"role": "user", "content": user_input})
             st.session_state.messages.append({"role": "assistant", "content": bot_response})
